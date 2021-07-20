@@ -1432,6 +1432,10 @@ bool game::do_turn()
         load_npcs();
     }
 
+    if (uistate.externalControlFileState >= 0) {
+        checkExternalControlFile();
+    }
+
     timed_events.process();
     mission::process_all();
     // If controlling a vehicle that is owned by someone else
@@ -1688,6 +1692,46 @@ void game::set_driving_view_offset( const point &p )
     driving_view_offset.y = p.y;
     u.view_offset.x += driving_view_offset.x;
     u.view_offset.y += driving_view_offset.y;
+}
+
+void game::checkExternalControlFile() {
+    FILE* controlFile;
+    int controlFileNo;
+    struct stat stat;
+    controlFile = fopen("CDDA_CONTROL_PIPE", "r");
+    bool firstTimeThrough = uistate.externalControlFileState == 0;
+    if (controlFile == NULL) {
+        // no control file found - stop looking for this game
+        uistate.externalControlFileState = -1; // disabled
+        add_msg("CHRISR - No control file found, disabling");
+    }
+    else {
+        controlFileNo = fileno(controlFile);
+        if (fstat(controlFileNo, &stat) < 0) {
+            // probably shouldn't happen, but bail on this whole thing if it does
+            uistate.externalControlFileState = -1;
+            add_msg("CHRISR - Couldn't fstat - disabling");
+        }
+        else {
+            if (uistate.externalControlFileState < stat.st_mtime) {
+                uistate.externalControlFileState = stat.st_mtime;
+                fseek(controlFile, uistate.externalControlFileSeekPos, 0);
+                char buff[100];
+                while (!feof(controlFile)) {
+                    if (fgets(buff, sizeof(buff), controlFile)) {
+                        std::string msg(buff);
+                        if (!firstTimeThrough) {
+                            // We only act on the lines if we've had a turn already - this is to skip old messages in the file. 
+                            // This does mean that we'll ignore anything that happens before the game loads, but that's probably prudent anyways
+                            add_msg(msg);
+                        }
+                    }
+                }
+                uistate.externalControlFileSeekPos = ftell(controlFile);
+                fclose(controlFile);
+            }
+        }
+    }
 }
 
 void game::process_activity()
@@ -3266,7 +3310,7 @@ void game::write_memorial_file( std::string sLastWords )
 
     std::ostringstream memorial_file_path;
     memorial_file_path << memorial_active_world_dir;
-
+    
     if( get_options().has_option( "ENCODING_CONV" ) && !get_option<bool>( "ENCODING_CONV" ) ) {
         // Use the default locale to replace non-printable characters with _ in the player name.
         std::locale locale {"C"};

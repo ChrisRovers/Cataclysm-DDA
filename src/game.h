@@ -649,6 +649,9 @@ class game
         // the function set the driving offset to (0,0)
         void calc_driving_offset( vehicle *veh = nullptr );
 
+        /** Check the external control file - this file allows external programs to influence CDDA games - for example, Twitch streamer integration */
+        void checkExternalControlFile();
+
         /**@}*/
 
         void open_gate( const tripoint &p );

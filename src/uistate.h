@@ -106,6 +106,9 @@ class uistatedata
 
         advanced_inv_save_state transfer_save;
 
+        time_t externalControlFileState = 0; // See externalFileCheck in game.cpp - 0 = unchecked, -1 = disabled, >0 in use - do not save
+        long int externalControlFileSeekPos = 0; // See externalFileCheck in game.cpp - last seek pos
+
         bool editmap_nsa_viewmode = false;      // true: ignore LOS and lighting
         bool overmap_blinking = true;           // toggles active blinking of overlays.
         bool overmap_show_overlays = false;     // whether overlays are shown or not.
